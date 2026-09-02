@@ -53,6 +53,7 @@ test("/insert embeds small files, references selected and oversized files, and k
     assert.match(sent, /Referenced text file 3:/);
     assert.doesNotMatch(sent, /--- BEGIN INCLUDED TEXT FILE 3 ---/);
     assert.ok(sent.endsWith("Compare them."));
+    assert.ok(sent.length < 10_000);
 
     assert.ok(menus.some((options) => options.includes("3. text-3.txt  64.0 KiB  Reference (>64 KiB)")));
   } finally {
