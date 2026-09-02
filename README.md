@@ -13,24 +13,25 @@ Paste one or more text blocks. Pi insert saves each block as a temporary `.txt` 
 ```text
 Pi insert - 3 text files
 
-1. text-1.txt   8.3 KiB   Embed
-2. text-2.txt  21.4 KiB   Reference
+1. text-1.txt   8.3 KiB   Embed      "successful build"
+2. text-2.txt  21.4 KiB   Reference  "failed build"
 3. text-3.txt  72.4 KiB   Reference (>64 KiB)
 
 Add more
+Set label
 Remove last
 Continue
 Cancel
 ```
 
-Select a file row to switch between **Embed** and **Reference**. Files larger than 64 KiB are reference-only. Use **Remove last** to discard the most recently added file.
+Select a file row to switch between **Embed** and **Reference**. Files larger than 64 KiB are reference-only. **Set label** adds or edits an optional short description for any file; submitting an empty label clears it. Use **Remove last** to discard the most recently added file.
 
-- **Embed** sends the path, byte size, and full contents.
-- **Reference** sends only the path and byte size, so the agent can `read`, `grep`, diff, or parse the temporary file when needed.
+- **Embed** sends the path, byte size, optional label, and full contents.
+- **Reference** sends only the path, byte size, and optional label, so the agent can decide whether to `read`, `grep`, diff, or parse the temporary file.
 
 Every file up to 64 KiB defaults to Embed. Larger files automatically use Reference, keeping oversized pastes out of the model context.
 
-Press Esc while adding another text or writing the final message to return to the summary without losing what you already added.
+Press Esc while adding another text, choosing a label, or writing the final message to return to the summary without losing what you already added.
 
 ## Example
 
@@ -38,8 +39,8 @@ An embedded file becomes:
 
 ```text
 Included text file 1:
-"/tmp/pi-insert-AbCd12/text-1.txt"
-(8529 bytes)
+Path: "/tmp/pi-insert-AbCd12/text-1.txt"
+Size: 8529 bytes
 
 --- BEGIN INCLUDED TEXT FILE 1 ---
 
@@ -48,12 +49,13 @@ Included text file 1:
 --- END INCLUDED TEXT FILE 1 ---
 ```
 
-A referenced file stays compact:
+A labeled referenced file stays compact:
 
 ```text
 Referenced text file 2:
-"/tmp/pi-insert-AbCd12/text-2.txt"
-(74231 bytes)
+Label: "failed build"
+Path: "/tmp/pi-insert-AbCd12/text-2.txt"
+Size: 74231 bytes
 ```
 
 After the summary, Pi insert opens one optional message editor for instructions such as:
