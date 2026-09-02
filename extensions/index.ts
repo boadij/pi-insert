@@ -7,7 +7,7 @@ const EMBED_LIMIT = 64 * 1024;
 
 type InsertFile = {
   path: string;
-  text: string;
+  text?: string;
   bytes: number;
   embed: boolean;
 };
@@ -33,7 +33,7 @@ function formatFile(file: InsertFile, index: number): string {
     "",
     `--- BEGIN INCLUDED TEXT FILE ${number} ---`,
     "",
-    file.text,
+    file.text!,
     "",
     `--- END INCLUDED TEXT FILE ${number} ---`,
   ].join("\n");
@@ -51,7 +51,8 @@ export default function piInsert(pi: ExtensionAPI) {
         const path = join(dir, `text-${files.length + 1}.txt`);
         const bytes = Buffer.byteLength(text, "utf8");
         await writeFile(path, text, "utf8");
-        files.push({ path, text, bytes, embed: bytes <= EMBED_LIMIT });
+        const embed = bytes <= EMBED_LIMIT;
+        files.push({ path, text: embed ? text : undefined, bytes, embed });
       };
 
       try {
