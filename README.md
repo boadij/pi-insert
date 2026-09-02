@@ -1,6 +1,6 @@
 # Pi insert
 
-**Paste long text into Pi without turning your prompt editor into a wall of text.**
+**Paste large text into Pi without filling your prompt editor with it.**
 
 Pi insert adds one command:
 
@@ -8,31 +8,32 @@ Pi insert adds one command:
 /insert
 ```
 
-It opens Pi's native multiline editor, lets you paste one or more large text blocks, saves each one as a temporary `.txt` file, and sends a clean message containing both the file metadata and its full contents.
-
-The agent gets the text immediately and also gets a real file path it can `read`, `grep`, diff, parse, or pass to another tool later.
-
-## What it feels like
-
-Run:
+Paste one or more text blocks. Pi insert saves each block as a temporary `.txt` file, shows a compact summary, and lets you choose whether Pi receives the full contents or only the file reference.
 
 ```text
-/insert
+Pi insert - 3 text files
+
+1. text-1.txt   8.3 KiB   Embed
+2. text-2.txt  21.4 KiB   Reference
+3. text-3.txt  72.4 KiB   Reference (>64 KiB)
+
+Add more
+Continue
+Cancel
 ```
 
-Paste your first block of text. Then choose:
+Select a file row to switch between **Embed** and **Reference**. Files larger than 64 KiB are reference-only.
 
-```text
-Add more   Continue   Cancel
-```
+- **Embed** sends the path, byte size, and full contents.
+- **Reference** sends only the path and byte size, so the agent can `read`, `grep`, diff, or parse the temporary file when needed.
 
-Add as many blocks as you need. When you continue, Pi insert gives you one final optional message editor for instructions such as:
+Every file up to 64 KiB defaults to Embed. Larger files automatically use Reference, keeping oversized pastes out of the model context.
 
-```text
-Compare these logs and explain why the second run fails.
-```
+Press Esc while adding another text or writing the final message to return to the summary without losing what you already added.
 
-Pi receives a single user message like:
+## Example
+
+An embedded file becomes:
 
 ```text
 Included text file 1:
@@ -44,11 +45,23 @@ Included text file 1:
 ...your pasted text...
 
 --- END INCLUDED TEXT FILE 1 ---
-
-Compare this log with the current implementation and find the root cause.
 ```
 
-With multiple inserts, each text block gets its own numbered temporary file and boundary.
+A referenced file stays compact:
+
+```text
+Referenced text file 2:
+"/tmp/pi-insert-AbCd12/text-2.txt"
+(74231 bytes)
+```
+
+After the summary, Pi insert opens one optional message editor for instructions such as:
+
+```text
+Compare these logs and explain why the second run fails.
+```
+
+Everything is sent as one user message.
 
 ## Install
 
@@ -70,9 +83,7 @@ For a one-off local test from this repository:
 pi -e ./extensions/index.ts
 ```
 
-## Why a temporary file too?
-
-Embedding the contents means the model can work with the text immediately. Keeping the original text in a real temporary file means the agent can later use normal filesystem tools against the exact same input without asking you to paste it again.
+## Temporary files
 
 Pi insert deliberately leaves cleanup to the operating system's temporary-directory policy. It does not add persistence, configuration, indexing, MIME detection, or a custom UI.
 
@@ -91,4 +102,4 @@ npm pack --dry-run
 
 ## License
 
-MIT
+Apache-2.0
