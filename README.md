@@ -31,7 +31,7 @@ Select a file row to switch between **Embed** and **Reference**. Files larger th
 
 Every file up to 64 KiB defaults to Embed. Larger files automatically use Reference, keeping oversized pastes out of the model context.
 
-Press Esc while adding another text, choosing a label, or writing the final message to return to the summary without losing what you already added.
+Press Esc while adding another text, selecting a file to label, entering a label, or writing the final message to return to the summary without losing what you already added.
 
 ## Example
 
