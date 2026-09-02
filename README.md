@@ -8,30 +8,36 @@ Pi insert adds one command:
 /insert
 ```
 
-Paste one or more text blocks. Pi insert saves each block as a temporary `.txt` file, shows a compact summary, and lets you choose whether Pi receives the full contents or only the file reference.
+Paste one or more text blocks. After each paste, Pi insert asks for an optional short label; press Enter to skip it. Each block is saved as a temporary `.txt` file and shown in a compact native summary.
 
 ```text
 Pi insert - 3 text files
 
-1. text-1.txt   8.3 KiB   Embed      "successful build"
-2. text-2.txt  21.4 KiB   Reference  "failed build"
-3. text-3.txt  72.4 KiB   Reference (>64 KiB)
-
 Add more
-Set label
-Remove last
 Continue
-Cancel
+1. text-1.txt   8.3 KiB  Embed      "successful build"
+2. text-2.txt  21.4 KiB  Reference  "failed build"
+3. text-3.txt  72.4 KiB  Reference  recommended
 ```
 
-Select a file row to switch between **Embed** and **Reference**. Files larger than 64 KiB are reference-only. **Set label** adds or edits an optional short description for any file; submitting an empty label clears it. Use **Remove last** to discard the most recently added file.
+`Add more` is the first selection. Select a file row to open its controls:
+
+```text
+text-2.txt
+
+Mode: Reference
+Edit label
+Remove
+```
+
+Selecting the mode toggles between **Embed** and **Reference**. Files up to 64 KiB default to Embed; larger files default to Reference as a recommendation, but either mode can always be selected manually.
 
 - **Embed** sends the path, byte size, optional label, and full contents.
 - **Reference** sends only the path, byte size, and optional label, so the agent can decide whether to `read`, `grep`, diff, or parse the temporary file.
 
-Every file up to 64 KiB defaults to Embed. Larger files automatically use Reference, keeping oversized pastes out of the model context.
+Removing a file deletes that temporary file. Remove is only offered when another file would remain.
 
-Press Esc while adding another text, selecting a file to label, entering a label, or writing the final message to return to the summary without losing what you already added.
+Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns to the summary. Esc from the label prompt immediately after a paste returns to that text editor with the pasted text preserved. Esc from the final optional message editor returns to the summary.
 
 ## Example
 
@@ -39,6 +45,7 @@ An embedded file becomes:
 
 ```text
 Included text file 1:
+Label: "successful build"
 Path: "/tmp/pi-insert-AbCd12/text-1.txt"
 Size: 8529 bytes
 
@@ -49,7 +56,7 @@ Size: 8529 bytes
 --- END INCLUDED TEXT FILE 1 ---
 ```
 
-A labeled referenced file stays compact:
+A referenced file stays compact:
 
 ```text
 Referenced text file 2:
