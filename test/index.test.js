@@ -1,18 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, rm } from "node:fs/promises";
-import { dirname } from "node:path";
+import { access, readFile, rm } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import piInsert from "../extensions/index.ts";
 
-test("/insert embeds small files, references selected and oversized files, and keeps temp files", async () => {
+test("/insert handles reference modes, the 64 KiB boundary, and removing the last file", async () => {
   let command;
   let sent;
-  const editors = ["héllo", undefined, "second file", "x".repeat(64 * 1024 + 1), undefined, "Compare them."];
+  const editors = [
+    "héllo",
+    undefined,
+    "second file",
+    "x".repeat(64 * 1024),
+    "y".repeat(64 * 1024 + 1),
+    "remove me",
+    undefined,
+    "Compare them.",
+  ];
   const choices = [
     "Add more",
     "Add more",
     "2. text-2.txt  11 B  Embed",
     "Add more",
+    "Add more",
+    "Add more",
+    "Remove last",
     "Continue",
     "Continue",
   ];
@@ -41,21 +53,26 @@ test("/insert embeds small files, references selected and oversized files, and k
   const paths = [...sent.matchAll(/^"(.+\/text-\d+\.txt)"$/gm)].map((match) => match[1]);
 
   try {
-    assert.equal(paths.length, 3);
+    assert.equal(paths.length, 4);
     assert.equal(await readFile(paths[0], "utf8"), "héllo");
     assert.equal(await readFile(paths[1], "utf8"), "second file");
-    assert.equal((await readFile(paths[2], "utf8")).length, 64 * 1024 + 1);
+    assert.equal((await readFile(paths[2], "utf8")).length, 64 * 1024);
+    assert.equal((await readFile(paths[3], "utf8")).length, 64 * 1024 + 1);
+    await assert.rejects(access(join(dirname(paths[0]), "text-5.txt")));
 
     assert.match(sent, /Included text file 1:/);
-    assert.match(sent, /--- BEGIN INCLUDED TEXT FILE 1 ---/);
     assert.match(sent, /Referenced text file 2:/);
-    assert.doesNotMatch(sent, /--- BEGIN INCLUDED TEXT FILE 2 ---/);
-    assert.match(sent, /Referenced text file 3:/);
-    assert.doesNotMatch(sent, /--- BEGIN INCLUDED TEXT FILE 3 ---/);
+    assert.match(sent, /Included text file 3:/);
+    assert.match(sent, /--- BEGIN INCLUDED TEXT FILE 3 ---/);
+    assert.match(sent, /x{100}/);
+    assert.match(sent, /Referenced text file 4:/);
+    assert.doesNotMatch(sent, /--- BEGIN INCLUDED TEXT FILE 4 ---/);
+    assert.doesNotMatch(sent, /y{100}/);
     assert.ok(sent.endsWith("Compare them."));
-    assert.ok(sent.length < 10_000);
 
-    assert.ok(menus.some((options) => options.includes("3. text-3.txt  64.0 KiB  Reference (>64 KiB)")));
+    assert.ok(menus.some((options) => options.includes("3. text-3.txt  64.0 KiB  Embed")));
+    assert.ok(menus.some((options) => options.includes("4. text-4.txt  64.0 KiB  Reference (>64 KiB)")));
+    assert.ok(menus.some((options) => options.includes("Remove last")));
   } finally {
     if (paths[0]) await rm(dirname(paths[0]), { recursive: true, force: true });
   }
