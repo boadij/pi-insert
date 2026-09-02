@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -69,9 +69,10 @@ export default function piInsert(pi: ExtensionAPI) {
             const locked = file.bytes > EMBED_LIMIT ? " (>64 KiB)" : "";
             return `${index + 1}. text-${index + 1}.txt  ${formatSize(file.bytes)}  ${file.embed ? "Embed" : "Reference"}${locked}`;
           });
+          const actions = ["Add more", ...(files.length > 1 ? ["Remove last"] : []), "Continue", "Cancel"];
           const choice = await ctx.ui.select(
             `Pi insert - ${files.length} text file${files.length === 1 ? "" : "s"}`,
-            [...rows, "Add more", "Continue", "Cancel"],
+            [...rows, ...actions],
           );
 
           const fileIndex = choice ? rows.indexOf(choice) : -1;
@@ -93,6 +94,12 @@ export default function piInsert(pi: ExtensionAPI) {
               continue;
             }
             await addText(text);
+            continue;
+          }
+
+          if (choice === "Remove last") {
+            await unlink(files.at(-1)!.path);
+            files.pop();
             continue;
           }
 
