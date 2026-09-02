@@ -10,6 +10,7 @@ type InsertFile = {
   text?: string;
   bytes: number;
   embed: boolean;
+  label?: string;
 };
 
 function formatSize(bytes: number): string {
@@ -22,8 +23,9 @@ function formatFile(file: InsertFile, index: number): string {
   const number = index + 1;
   const metadata = [
     `${file.embed ? "Included" : "Referenced"} text file ${number}:`,
-    JSON.stringify(file.path),
-    `(${file.bytes} bytes)`,
+    ...(file.label ? [`Label: ${JSON.stringify(file.label)}`] : []),
+    `Path: ${JSON.stringify(file.path)}`,
+    `Size: ${file.bytes} bytes`,
   ];
 
   if (!file.embed) return metadata.join("\n");
@@ -67,9 +69,10 @@ export default function piInsert(pi: ExtensionAPI) {
         while (true) {
           const rows = files.map((file, index) => {
             const locked = file.bytes > EMBED_LIMIT ? " (>64 KiB)" : "";
-            return `${index + 1}. text-${index + 1}.txt  ${formatSize(file.bytes)}  ${file.embed ? "Embed" : "Reference"}${locked}`;
+            const label = file.label ? `  ${JSON.stringify(file.label)}` : "";
+            return `${index + 1}. text-${index + 1}.txt  ${formatSize(file.bytes)}  ${file.embed ? "Embed" : "Reference"}${locked}${label}`;
           });
-          const actions = ["Add more", ...(files.length > 1 ? ["Remove last"] : []), "Continue", "Cancel"];
+          const actions = ["Add more", "Set label", ...(files.length > 1 ? ["Remove last"] : []), "Continue", "Cancel"];
           const choice = await ctx.ui.select(
             `Pi insert - ${files.length} text file${files.length === 1 ? "" : "s"}`,
             [...rows, ...actions],
@@ -94,6 +97,19 @@ export default function piInsert(pi: ExtensionAPI) {
               continue;
             }
             await addText(text);
+            continue;
+          }
+
+          if (choice === "Set label") {
+            const selected = await ctx.ui.select("Pi insert - select file", rows);
+            const index = selected ? rows.indexOf(selected) : -1;
+            if (index < 0) continue;
+            const label = await ctx.ui.input(
+              `Pi insert - label for text-${index + 1}.txt`,
+              files[index].label ?? "Optional label",
+            );
+            if (label === undefined) continue;
+            files[index].label = label.trim() || undefined;
             continue;
           }
 
