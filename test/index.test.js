@@ -4,7 +4,7 @@ import { access, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import piInsert from "../extensions/index.ts";
 
-test("/insert handles reference modes, the 64 KiB boundary, and removing the last file", async () => {
+test("/insert handles labels, reference modes, the 64 KiB boundary, and removing the last file", async () => {
   let command;
   let sent;
   const editors = [
@@ -17,10 +17,13 @@ test("/insert handles reference modes, the 64 KiB boundary, and removing the las
     undefined,
     "Compare them.",
   ];
+  const inputs = ["failed build"];
   const choices = [
     "Add more",
     "Add more",
     "2. text-2.txt  11 B  Embed",
+    "Set label",
+    "2. text-2.txt  11 B  Reference",
     "Add more",
     "Add more",
     "Add more",
@@ -42,6 +45,7 @@ test("/insert handles reference modes, the 64 KiB boundary, and removing the las
   await command.handler("", {
     ui: {
       editor: async () => editors.shift(),
+      input: async () => inputs.shift(),
       select: async (_title, options) => {
         menus.push(options);
         return choices.shift();
@@ -50,7 +54,7 @@ test("/insert handles reference modes, the 64 KiB boundary, and removing the las
     },
   });
 
-  const paths = [...sent.matchAll(/^"(.+\/text-\d+\.txt)"$/gm)].map((match) => match[1]);
+  const paths = [...sent.matchAll(/^Path: "(.+\/text-\d+\.txt)"$/gm)].map((match) => match[1]);
 
   try {
     assert.equal(paths.length, 4);
@@ -61,7 +65,7 @@ test("/insert handles reference modes, the 64 KiB boundary, and removing the las
     await assert.rejects(access(join(dirname(paths[0]), "text-5.txt")));
 
     assert.match(sent, /Included text file 1:/);
-    assert.match(sent, /Referenced text file 2:/);
+    assert.match(sent, /Referenced text file 2:\nLabel: "failed build"/);
     assert.match(sent, /Included text file 3:/);
     assert.match(sent, /--- BEGIN INCLUDED TEXT FILE 3 ---/);
     assert.match(sent, /x{100}/);
@@ -70,8 +74,10 @@ test("/insert handles reference modes, the 64 KiB boundary, and removing the las
     assert.doesNotMatch(sent, /y{100}/);
     assert.ok(sent.endsWith("Compare them."));
 
+    assert.ok(menus.some((options) => options.includes("2. text-2.txt  11 B  Reference  \"failed build\"")));
     assert.ok(menus.some((options) => options.includes("3. text-3.txt  64.0 KiB  Embed")));
     assert.ok(menus.some((options) => options.includes("4. text-4.txt  64.0 KiB  Reference (>64 KiB)")));
+    assert.ok(menus.some((options) => options.includes("Set label")));
     assert.ok(menus.some((options) => options.includes("Remove last")));
   } finally {
     if (paths[0]) await rm(dirname(paths[0]), { recursive: true, force: true });
