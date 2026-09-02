@@ -1,0 +1,37 @@
+{
+  "name": "pi-insert",
+  "version": "0.1.0",
+  "description": "Paste long text into Pi as temporary, addressable files with a native TUI flow.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "boadij",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boadij/pi-insert.git"
+  },
+  "homepage": "https://github.com/boadij/pi-insert#readme",
+  "bugs": {
+    "url": "https://github.com/boadij/pi-insert/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "paste",
+    "context"
+  ],
+  "files": [
+    "extensions/"
+  ],
+  "scripts": {
+    "test": "node --experimental-strip-types --test"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.84.4"
+  }
+}
