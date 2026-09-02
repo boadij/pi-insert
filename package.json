@@ -1,6 +1,6 @@
 {
   "name": "pi-insert",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Paste long text into Pi as temporary files, embedding small inputs or referencing large ones.",
   "type": "module",
   "license": "Apache-2.0",
