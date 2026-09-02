@@ -18,11 +18,12 @@ Pi insert - 3 text files
 3. text-3.txt  72.4 KiB   Reference (>64 KiB)
 
 Add more
+Remove last
 Continue
 Cancel
 ```
 
-Select a file row to switch between **Embed** and **Reference**. Files larger than 64 KiB are reference-only.
+Select a file row to switch between **Embed** and **Reference**. Files larger than 64 KiB are reference-only. Use **Remove last** to discard the most recently added file.
 
 - **Embed** sends the path, byte size, and full contents.
 - **Reference** sends only the path and byte size, so the agent can `read`, `grep`, diff, or parse the temporary file when needed.
