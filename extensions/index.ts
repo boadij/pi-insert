@@ -122,7 +122,7 @@ export default function piInsert(pi: ExtensionAPI) {
               continue;
             }
             if (action === "Edit label") {
-              const label = await ctx.ui.input(`Pi insert - label for ${file.name} (optional)`, file.label ?? "Press Enter to clear");
+              const label = await ctx.ui.editor(`Pi insert - label for ${file.name} (optional)`, file.label ?? "");
               if (label !== undefined) file.label = label.trim() || undefined;
               continue;
             }
