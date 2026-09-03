@@ -56,7 +56,6 @@ test("/insert waits for Pi to report idle before flushing a compacting session",
   handlers.session_before_compact();
 
   await command.handler("", {
-    isIdle: () => idle,
     ui: {
       editor: async (title, initial) => {
         if (title === "Pi insert - label for text-2.txt (optional)") {
@@ -79,7 +78,7 @@ test("/insert waits for Pi to report idle before flushing a compacting session",
   assert.equal(sent.length, 0);
   assert.deepEqual(notices.at(-1), ["Queued for after compaction.", "info"]);
 
-  handlers.session_compact();
+  handlers.session_compact({}, { isIdle: () => idle });
   await new Promise((resolve) => setTimeout(resolve, 60));
   assert.equal(sent.length, 0);
 
