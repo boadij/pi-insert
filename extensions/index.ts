@@ -13,6 +13,11 @@ type InsertFile = {
   label?: string;
 };
 
+type QueuedInsert = {
+  prompt: string;
+  isIdle: () => boolean;
+};
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
@@ -43,15 +48,20 @@ async function formatFile(file: InsertFile, index: number): Promise<string> {
 
 export default function piInsert(pi: ExtensionAPI) {
   let compacting = false;
-  const queued: string[] = [];
+  const queued: QueuedInsert[] = [];
 
   const flushQueued = () => {
-    setImmediate(() => {
-      if (compacting) return;
-      for (const prompt of queued.splice(0)) {
+    const flush = () => {
+      if (queued.length === 0) return;
+      if (queued.some(({ isIdle }) => !isIdle())) {
+        setTimeout(flush, 25);
+        return;
+      }
+      for (const { prompt } of queued.splice(0)) {
         pi.sendUserMessage(prompt, { deliverAs: "steer" });
       }
-    });
+    };
+    setTimeout(flush, 0);
   };
 
   pi.on("session_before_compact", () => {
@@ -129,7 +139,7 @@ export default function piInsert(pi: ExtensionAPI) {
             const inserted = await Promise.all(files.map(formatFile));
             const prompt = [...inserted, ...(message.trim() ? [message] : [])].join("\n\n");
             if (compacting) {
-              queued.push(prompt);
+              queued.push({ prompt, isIdle: () => ctx.isIdle() });
               ctx.ui.notify("Queued for after compaction.", "info");
             } else {
               pi.sendUserMessage(prompt, { deliverAs: "steer" });
