@@ -1,7 +1,7 @@
 {
   "name": "pi-insert",
-  "version": "0.1.0",
-  "description": "Paste long text into Pi as temporary, addressable files with a native TUI flow.",
+  "version": "0.1.1",
+  "description": "Paste large text into Pi as temporary files with Embed/Reference control and optional labels.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "boadij",
