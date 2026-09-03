@@ -4,12 +4,12 @@ import { access, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import piInsert from "../extensions/index.ts";
 
-test("/insert queues during compaction and flushes after Pi leaves the compaction callback", async () => {
+test("/insert waits for Pi to report idle before flushing a compacting session", async () => {
   let command;
+  let idle = false;
   const sent = [];
   const handlers = {};
   const notices = [];
-  let insideCompactionCallback = false;
   const editors = [
     "héllo",
     "second file",
@@ -47,7 +47,7 @@ test("/insert queues during compaction and flushes after Pi leaves the compactio
       command = definition;
     },
     sendUserMessage(message, options) {
-      assert.equal(insideCompactionCallback, false);
+      assert.equal(idle, true);
       assert.deepEqual(options, { deliverAs: "steer" });
       sent.push(message);
     },
@@ -56,6 +56,7 @@ test("/insert queues during compaction and flushes after Pi leaves the compactio
   handlers.session_before_compact();
 
   await command.handler("", {
+    isIdle: () => idle,
     ui: {
       editor: async (title, initial) => {
         if (title === "Pi insert - label for text-2.txt (optional)") {
@@ -78,12 +79,14 @@ test("/insert queues during compaction and flushes after Pi leaves the compactio
   assert.equal(sent.length, 0);
   assert.deepEqual(notices.at(-1), ["Queued for after compaction.", "info"]);
 
-  insideCompactionCallback = true;
   handlers.session_compact();
-  insideCompactionCallback = false;
-  await new Promise(setImmediate);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(sent.length, 0);
 
+  idle = true;
+  await new Promise((resolve) => setTimeout(resolve, 60));
   assert.equal(sent.length, 1);
+
   const prompt = sent[0];
   const paths = [...prompt.matchAll(/^Path: "(.+\/text-\d+\.txt)"$/gm)].map((match) => match[1]);
 
