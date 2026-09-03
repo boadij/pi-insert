@@ -1,20 +1,41 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-function formatIncludedFile(path: string, text: string, index: number): string {
+const EMBED_LIMIT = 64 * 1024;
+
+type InsertFile = {
+  name: string;
+  path: string;
+  bytes: number;
+  embed: boolean;
+  label?: string;
+};
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
+}
+
+async function formatFile(file: InsertFile, index: number): Promise<string> {
   const number = index + 1;
-  const bytes = Buffer.byteLength(text, "utf8");
+  const metadata = [
+    `${file.embed ? "Included" : "Referenced"} text file ${number}:`,
+    ...(file.label ? [`Label: ${JSON.stringify(file.label)}`] : []),
+    `Path: ${JSON.stringify(file.path)}`,
+    `Size: ${file.bytes} bytes`,
+  ];
+
+  if (!file.embed) return metadata.join("\n");
 
   return [
-    `Included text file ${number}:`,
-    JSON.stringify(path),
-    `(${bytes} bytes)`,
+    ...metadata,
     "",
     `--- BEGIN INCLUDED TEXT FILE ${number} ---`,
     "",
-    text,
+    await readFile(file.path, "utf8"),
     "",
     `--- END INCLUDED TEXT FILE ${number} ---`,
   ].join("\n");
@@ -22,42 +43,95 @@ function formatIncludedFile(path: string, text: string, index: number): string {
 
 export default function piInsert(pi: ExtensionAPI) {
   pi.registerCommand("insert", {
-    description: "Paste long text into temporary files and include it in a message",
+    description: "Paste text into temporary files and insert or reference them in a message",
     handler: async (args, ctx) => {
-      const files: Array<{ path: string; text: string }> = [];
+      const files: InsertFile[] = [];
       let dir: string | undefined;
+      let nextNumber = 1;
+
+      const addFile = async (emptyMessage: string) => {
+        const name = `text-${nextNumber}.txt`;
+        let text = "";
+
+        while (true) {
+          const edited = await ctx.ui.editor(`Pi insert - ${name}`, text);
+          if (edited === undefined) return false;
+          if (edited.length === 0) {
+            ctx.ui.notify(emptyMessage, "warning");
+            return false;
+          }
+          text = edited;
+
+          const label = await ctx.ui.input(`Pi insert - label for ${name} (optional)`, "Press Enter to skip");
+          if (label === undefined) continue;
+
+          dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
+          const path = join(dir, name);
+          const bytes = Buffer.byteLength(text, "utf8");
+          await writeFile(path, text, "utf8");
+          files.push({ name, path, bytes, embed: bytes <= EMBED_LIMIT, label: label.trim() || undefined });
+          nextNumber++;
+          return true;
+        }
+      };
 
       try {
+        if (!(await addFile("Nothing to insert."))) return;
+
         while (true) {
-          const text = await ctx.ui.editor(`Pi insert - text ${files.length + 1}`, "");
-          if (text === undefined) return;
-          if (text.length === 0) {
-            ctx.ui.notify("Nothing to insert.", "warning");
+          const sizes = files.map((file) => formatSize(file.bytes));
+          const nameWidth = Math.max(...files.map((file) => file.name.length));
+          const sizeWidth = Math.max(...sizes.map((size) => size.length));
+          const rows = files.map((file, index) => {
+            const mode = file.embed ? "Embed" : "Reference";
+            const recommended = file.bytes > EMBED_LIMIT && !file.embed ? "  recommended" : "";
+            const label = file.label ? `  ${JSON.stringify(file.label)}` : "";
+            return `${index + 1}. ${file.name.padEnd(nameWidth)}  ${sizes[index].padStart(sizeWidth)}  ${mode.padEnd(9)}${recommended}${label}`;
+          });
+          const choice = await ctx.ui.select(
+            `Pi insert - ${files.length} text file${files.length === 1 ? "" : "s"}`,
+            ["Add more", "Continue", ...rows],
+          );
+
+          if (choice === undefined) return;
+          if (choice === "Add more") {
+            await addFile("Nothing added.");
+            continue;
+          }
+          if (choice === "Continue") {
+            const message = await ctx.ui.editor("Pi insert - message (optional)", (args ?? "").trim());
+            if (message === undefined) continue;
+
+            const inserted = await Promise.all(files.map(formatFile));
+            pi.sendUserMessage([...inserted, ...(message.trim() ? [message] : [])].join("\n\n"));
             return;
           }
 
-          dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
-          const path = join(dir, `text-${files.length + 1}.txt`);
-          await writeFile(path, text, "utf8");
-          files.push({ path, text });
+          const index = rows.indexOf(choice);
+          if (index < 0) continue;
+          const file = files[index];
 
-          const next = await ctx.ui.select(
-            `${files.length} text file${files.length === 1 ? "" : "s"} added`,
-            ["Add more", "Continue", "Cancel"],
-          );
+          while (files.includes(file)) {
+            const mode = `Mode: ${file.embed ? "Embed" : "Reference"}${file.bytes > EMBED_LIMIT && !file.embed ? " (recommended)" : ""}`;
+            const actions = [mode, "Edit label", ...(files.length > 1 ? ["Remove"] : [])];
+            const action = await ctx.ui.select(file.name, actions);
 
-          if (next === "Add more") continue;
-          if (next !== "Continue") return;
-          break;
+            if (action === undefined) break;
+            if (action === mode) {
+              file.embed = !file.embed;
+              continue;
+            }
+            if (action === "Edit label") {
+              const label = await ctx.ui.editor(`Pi insert - label for ${file.name} (optional)`, file.label ?? "");
+              if (label !== undefined) file.label = label.trim() || undefined;
+              continue;
+            }
+            if (action === "Remove") {
+              await unlink(file.path);
+              files.splice(files.indexOf(file), 1);
+            }
+          }
         }
-
-        const message = await ctx.ui.editor("Pi insert - message (optional)", (args ?? "").trim());
-        if (message === undefined) return;
-
-        const included = files.map(({ path, text }, index) => formatIncludedFile(path, text, index));
-        const prompt = [...included, ...(message.trim() ? [message] : [])].join("\n\n");
-
-        pi.sendUserMessage(prompt);
       } catch (error) {
         ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
       }
