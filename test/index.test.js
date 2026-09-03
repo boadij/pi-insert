@@ -4,9 +4,12 @@ import { access, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import piInsert from "../extensions/index.ts";
 
-test("/insert uses the native summary/submenu flow and keeps the 64 KiB limit advisory", async () => {
+test("/insert waits for Pi to report idle before flushing a compacting session", async () => {
   let command;
-  let sent;
+  let idle = false;
+  const sent = [];
+  const handlers = {};
+  const notices = [];
   const editors = [
     "héllo",
     "second file",
@@ -37,13 +40,20 @@ test("/insert uses the native summary/submenu flow and keeps the 64 KiB limit ad
   const menus = [];
 
   piInsert({
+    on(type, handler) {
+      handlers[type] = handler;
+    },
     registerCommand(_name, definition) {
       command = definition;
     },
-    sendUserMessage(message) {
-      sent = message;
+    sendUserMessage(message, options) {
+      assert.equal(idle, true);
+      assert.deepEqual(options, { deliverAs: "steer" });
+      sent.push(message);
     },
   });
+
+  handlers.session_before_compact();
 
   await command.handler("", {
     ui: {
@@ -59,11 +69,25 @@ test("/insert uses the native summary/submenu flow and keeps the 64 KiB limit ad
         menus.push(options);
         return steps.shift()(options);
       },
-      notify() {},
+      notify(message, level) {
+        notices.push([message, level]);
+      },
     },
   });
 
-  const paths = [...sent.matchAll(/^Path: "(.+\/text-\d+\.txt)"$/gm)].map((match) => match[1]);
+  assert.equal(sent.length, 0);
+  assert.deepEqual(notices.at(-1), ["Queued for after compaction.", "info"]);
+
+  handlers.session_compact({}, { isIdle: () => idle });
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(sent.length, 0);
+
+  idle = true;
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(sent.length, 1);
+
+  const prompt = sent[0];
+  const paths = [...prompt.matchAll(/^Path: "(.+\/text-\d+\.txt)"$/gm)].map((match) => match[1]);
 
   try {
     assert.deepEqual(paths.map((path) => path.match(/text-\d+\.txt$/)[0]), ["text-1.txt", "text-2.txt", "text-3.txt", "text-4.txt"]);
@@ -73,13 +97,13 @@ test("/insert uses the native summary/submenu flow and keeps the 64 KiB limit ad
     assert.equal((await readFile(paths[3], "utf8")).length, 64 * 1024 + 1);
     await assert.rejects(access(join(dirname(paths[0]), "text-5.txt")));
 
-    assert.match(sent, /Referenced text file 2:\nLabel: "updated build"/);
-    assert.doesNotMatch(sent, /--- BEGIN INCLUDED TEXT FILE 2 ---/);
-    assert.match(sent, /Included text file 3:/);
-    assert.match(sent, /x{100}/);
-    assert.match(sent, /Included text file 4:\nLabel: "large log"/);
-    assert.match(sent, /y{100}/);
-    assert.ok(sent.endsWith("Compare them."));
+    assert.match(prompt, /Referenced text file 2:\nLabel: "updated build"/);
+    assert.doesNotMatch(prompt, /--- BEGIN INCLUDED TEXT FILE 2 ---/);
+    assert.match(prompt, /Included text file 3:/);
+    assert.match(prompt, /x{100}/);
+    assert.match(prompt, /Included text file 4:\nLabel: "large log"/);
+    assert.match(prompt, /y{100}/);
+    assert.ok(prompt.endsWith("Compare them."));
 
     assert.ok(menus.some((options) => options[0] === "Add more" && options[1] === "Continue"));
     assert.ok(menus.some((options) => options.includes("Mode: Reference (recommended)")));
