@@ -13,11 +13,6 @@ type InsertFile = {
   label?: string;
 };
 
-type QueuedInsert = {
-  prompt: string;
-  isIdle: () => boolean;
-};
-
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
@@ -48,32 +43,30 @@ async function formatFile(file: InsertFile, index: number): Promise<string> {
 
 export default function piInsert(pi: ExtensionAPI) {
   let compacting = false;
-  const queued: QueuedInsert[] = [];
+  const queued: string[] = [];
 
-  const flushQueued = () => {
-    const flush = () => {
-      if (queued.length === 0) return;
-      if (queued.some(({ isIdle }) => !isIdle())) {
-        setTimeout(flush, 25);
+  const finishCompaction = (isIdle: () => boolean) => {
+    const finish = () => {
+      if (!isIdle()) {
+        setTimeout(finish, 25);
         return;
       }
-      for (const { prompt } of queued.splice(0)) {
+      compacting = false;
+      for (const prompt of queued.splice(0)) {
         pi.sendUserMessage(prompt, { deliverAs: "steer" });
       }
     };
-    setTimeout(flush, 0);
+    setTimeout(finish, 0);
   };
 
   pi.on("session_before_compact", () => {
     compacting = true;
   });
-  pi.on("session_compact", () => {
-    compacting = false;
-    flushQueued();
+  pi.on("session_compact", (_event, ctx) => {
+    finishCompaction(() => ctx.isIdle());
   });
-  pi.on("session_compact_failed", () => {
-    compacting = false;
-    flushQueued();
+  pi.on("session_compact_failed", (_event, ctx) => {
+    finishCompaction(() => ctx.isIdle());
   });
 
   pi.registerCommand("insert", {
@@ -139,7 +132,7 @@ export default function piInsert(pi: ExtensionAPI) {
             const inserted = await Promise.all(files.map(formatFile));
             const prompt = [...inserted, ...(message.trim() ? [message] : [])].join("\n\n");
             if (compacting) {
-              queued.push({ prompt, isIdle: () => ctx.isIdle() });
+              queued.push(prompt);
               ctx.ui.notify("Queued for after compaction.", "info");
             } else {
               pi.sendUserMessage(prompt, { deliverAs: "steer" });
