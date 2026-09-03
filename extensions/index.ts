@@ -42,6 +42,30 @@ async function formatFile(file: InsertFile, index: number): Promise<string> {
 }
 
 export default function piInsert(pi: ExtensionAPI) {
+  let compacting = false;
+  const queued: string[] = [];
+
+  const flushQueued = () => {
+    setImmediate(() => {
+      if (compacting) return;
+      for (const prompt of queued.splice(0)) {
+        pi.sendUserMessage(prompt, { deliverAs: "steer" });
+      }
+    });
+  };
+
+  pi.on("session_before_compact", () => {
+    compacting = true;
+  });
+  pi.on("session_compact", () => {
+    compacting = false;
+    flushQueued();
+  });
+  pi.on("session_compact_failed", () => {
+    compacting = false;
+    flushQueued();
+  });
+
   pi.registerCommand("insert", {
     description: "Paste text into temporary files and insert or reference them in a message",
     handler: async (args, ctx) => {
@@ -103,7 +127,13 @@ export default function piInsert(pi: ExtensionAPI) {
             if (message === undefined) continue;
 
             const inserted = await Promise.all(files.map(formatFile));
-            pi.sendUserMessage([...inserted, ...(message.trim() ? [message] : [])].join("\n\n"));
+            const prompt = [...inserted, ...(message.trim() ? [message] : [])].join("\n\n");
+            if (compacting) {
+              queued.push(prompt);
+              ctx.ui.notify("Queued for after compaction.", "info");
+            } else {
+              pi.sendUserMessage(prompt, { deliverAs: "steer" });
+            }
             return;
           }
 
