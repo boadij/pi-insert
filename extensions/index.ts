@@ -1,17 +1,33 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { mkdtemp, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const EMBED_LIMIT = 64 * 1024;
 
 type InsertFile = {
+  number: number;
   name: string;
   path: string;
   bytes: number;
   embed: boolean;
   label?: string;
 };
+
+function filenameFor(label: string | undefined, number: number, files: InsertFile[], current?: InsertFile): string {
+  const stem = label
+    ? [...label.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "")]
+        .slice(0, 48)
+        .join("")
+        .replace(/-+$/, "")
+    : "";
+  const base = stem || `text-${number}`;
+
+  for (let suffix = 1; ; suffix++) {
+    const name = `${base}${suffix === 1 ? "" : `-${suffix}`}.txt`;
+    if (!files.some((file) => file !== current && file.name === name)) return name;
+  }
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -50,11 +66,12 @@ export default function piInsert(pi: ExtensionAPI) {
       let nextNumber = 1;
 
       const addFile = async (emptyMessage: string) => {
-        const name = `text-${nextNumber}.txt`;
+        const number = nextNumber;
+        const fallbackName = `text-${number}.txt`;
         let text = "";
 
         while (true) {
-          const edited = await ctx.ui.editor(`Pi insert - ${name}`, text);
+          const edited = await ctx.ui.editor(`Pi insert - ${fallbackName}`, text);
           if (edited === undefined) return false;
           if (edited.length === 0) {
             ctx.ui.notify(emptyMessage, "warning");
@@ -62,14 +79,16 @@ export default function piInsert(pi: ExtensionAPI) {
           }
           text = edited;
 
-          const label = await ctx.ui.input(`Pi insert - label for ${name} (optional)`, "Press Enter to skip");
+          const label = await ctx.ui.input(`Pi insert - label for ${fallbackName} (optional)`, "Press Enter to skip");
           if (label === undefined) continue;
 
+          const cleanLabel = label.trim() || undefined;
+          const name = filenameFor(cleanLabel, number, files);
           dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
           const path = join(dir, name);
           const bytes = Buffer.byteLength(text, "utf8");
           await writeFile(path, text, "utf8");
-          files.push({ name, path, bytes, embed: bytes <= EMBED_LIMIT, label: label.trim() || undefined });
+          files.push({ number, name, path, bytes, embed: bytes <= EMBED_LIMIT, label: cleanLabel });
           nextNumber++;
           return true;
         }
@@ -123,7 +142,17 @@ export default function piInsert(pi: ExtensionAPI) {
             }
             if (action === "Edit label") {
               const label = await ctx.ui.editor(`Pi insert - label for ${file.name} (optional)`, file.label ?? "");
-              if (label !== undefined) file.label = label.trim() || undefined;
+              if (label !== undefined) {
+                const cleanLabel = label.trim() || undefined;
+                const name = filenameFor(cleanLabel, file.number, files, file);
+                if (name !== file.name) {
+                  const path = join(dir!, name);
+                  await rename(file.path, path);
+                  file.name = name;
+                  file.path = path;
+                }
+                file.label = cleanLabel;
+              }
               continue;
             }
             if (action === "Remove") {
