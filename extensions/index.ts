@@ -35,26 +35,10 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
 }
 
-async function formatFile(file: InsertFile, index: number): Promise<string> {
-  const number = index + 1;
-  const metadata = [
-    `${file.embed ? "Included" : "Referenced"} text file ${number}:`,
-    ...(file.label ? [`Label: ${JSON.stringify(file.label)}`] : []),
-    `Path: ${JSON.stringify(file.path)}`,
-    `Size: ${file.bytes} bytes`,
-  ];
-
-  if (!file.embed) return metadata.join("\n");
-
-  return [
-    ...metadata,
-    "",
-    `--- BEGIN INCLUDED TEXT FILE ${number} ---`,
-    "",
-    await readFile(file.path, "utf8"),
-    "",
-    `--- END INCLUDED TEXT FILE ${number} ---`,
-  ].join("\n");
+async function formatFile(file: InsertFile): Promise<string> {
+  const tag = `<file name="${file.path}" bytes="${file.bytes}"`;
+  if (!file.embed) return `${tag} />`;
+  return `${tag}>\n${await readFile(file.path, "utf8")}\n</file>`;
 }
 
 export default function piInsert(pi: ExtensionAPI) {
