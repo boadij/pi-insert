@@ -32,8 +32,8 @@ Remove
 
 Selecting the mode toggles between **Embed** and **Reference**. Files up to 64 KiB default to Embed; larger files default to Reference as a recommendation, but either mode can always be selected manually.
 
-- **Embed** sends the path, byte size, optional label, and full contents.
-- **Reference** sends only the path, byte size, and optional label, so the agent can decide whether to `read`, `grep`, diff, or parse the temporary file.
+- **Embed** uses Pi-style `<file>` framing with the path, raw byte count, and full contents.
+- **Reference** uses the same framing as a self-closing tag, so the agent gets the path and byte count without the contents and can decide whether to `read`, `grep`, diff, or parse the temporary file.
 
 Editing a label renames its temporary file too. Duplicate labels get `-2`, `-3`, and so on. Removing a file deletes that temporary file. Remove is only offered when another file would remain.
 
@@ -41,29 +41,21 @@ Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns 
 
 ## Example
 
-An embedded file becomes:
+An embedded file follows Pi's native file framing, with `bytes` added as explicit metadata:
 
-```text
-Included text file 1:
-Label: "successful build"
-Path: "/tmp/pi-insert-AbCd12/successful-build.txt"
-Size: 8529 bytes
-
---- BEGIN INCLUDED TEXT FILE 1 ---
-
+```xml
+<file name="/tmp/pi-insert-AbCd12/successful-build.txt" bytes="8529">
 ...your pasted text...
-
---- END INCLUDED TEXT FILE 1 ---
+</file>
 ```
 
 A referenced file stays compact:
 
-```text
-Referenced text file 2:
-Label: "failed build"
-Path: "/tmp/pi-insert-AbCd12/failed-build.txt"
-Size: 74231 bytes
+```xml
+<file name="/tmp/pi-insert-AbCd12/failed-build.txt" bytes="74231" />
 ```
+
+`bytes` is the raw UTF-8 byte count. Labels remain visible in the TUI and are reflected in the generated filename rather than duplicated in the model-facing payload.
 
 After the summary, Pi insert opens one optional message editor for instructions such as:
 
