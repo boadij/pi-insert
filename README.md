@@ -32,8 +32,8 @@ Remove
 
 Selecting the mode toggles between **Embed** and **Reference**. Files up to 64 KiB default to Embed; larger files default to Reference as a recommendation, but either mode can always be selected manually.
 
-- **Embed** uses Pi-style `<file>` framing with the path, raw byte count, and full contents.
-- **Reference** uses the same framing as a self-closing tag, so the agent gets the path and byte count without the contents and can decide whether to `read`, `grep`, diff, or parse the temporary file.
+- **Embed** uses Pi-style `<file>` framing with the path, raw byte count, optional exact label, and full contents.
+- **Reference** uses the same framing as a self-closing tag, so the agent gets the path, byte count, and optional exact label without the contents and can decide whether to `read`, `grep`, diff, or parse the temporary file.
 
 Editing a label renames its temporary file too. Duplicate labels get `-2`, `-3`, and so on. Removing a file deletes that temporary file. Remove is only offered when another file would remain.
 
@@ -44,7 +44,7 @@ Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns 
 An embedded file follows Pi's native file framing, with `bytes` added as explicit metadata:
 
 ```xml
-<file name="/tmp/pi-insert-AbCd12/successful-build.txt" bytes="8529">
+<file name="/tmp/pi-insert-AbCd12/successful-build.txt" bytes="8529" label="successful build">
 ...your pasted text...
 </file>
 ```
@@ -52,10 +52,10 @@ An embedded file follows Pi's native file framing, with `bytes` added as explici
 A referenced file stays compact:
 
 ```xml
-<file name="/tmp/pi-insert-AbCd12/failed-build.txt" bytes="74231" />
+<file name="/tmp/pi-insert-AbCd12/failed-build.txt" bytes="74231" label="failed build" />
 ```
 
-`bytes` is the raw UTF-8 byte count. Labels remain visible in the TUI and are reflected in the generated filename rather than duplicated in the model-facing payload.
+`bytes` is the raw UTF-8 byte count. When present, `label` preserves the exact human label even when the generated filename is normalized, truncated, or deduplicated.
 
 After the summary, Pi insert opens one optional message editor for instructions such as:
 

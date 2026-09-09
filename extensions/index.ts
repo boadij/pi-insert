@@ -29,6 +29,16 @@ function filenameFor(label: string | undefined, number: number, files: InsertFil
   }
 }
 
+function xmlAttr(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll("\n", "&#10;")
+    .replaceAll("\r", "&#13;")
+    .replaceAll("\t", "&#9;");
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
@@ -36,7 +46,7 @@ function formatSize(bytes: number): string {
 }
 
 async function formatFile(file: InsertFile): Promise<string> {
-  const tag = `<file name="${file.path}" bytes="${file.bytes}"`;
+  const tag = `<file name="${xmlAttr(file.path)}" bytes="${file.bytes}"${file.label ? ` label="${xmlAttr(file.label)}"` : ""}`;
   if (!file.embed) return `${tag} />`;
   return `${tag}>\n${await readFile(file.path, "utf8")}\n</file>`;
 }
