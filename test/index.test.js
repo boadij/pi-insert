@@ -33,6 +33,7 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
     () => "Continue",
   ];
   const menus = [];
+  const statuses = [];
   const contentTitles = [];
   const labelPrompts = [];
 
@@ -66,12 +67,19 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
       pasteToEditor(text) {
         pastes.push(text);
       },
+      setStatus(key, text) {
+        statuses.push([key, text]);
+      },
       notify() {},
     },
     mode: "tui",
   });
 
   assert.equal(pastes.length, 2);
+  assert.deepEqual(statuses, [
+    ["pi-insert", "Preparing insert…"],
+    ["pi-insert", undefined],
+  ]);
   const prepared = pastes[0];
   const tags = [...prepared.matchAll(/<file name="([^"]+\.txt)" bytes="(\d+)"(?: label="([^"]*)")?(?: \/>|>)/g)];
   const paths = tags.map((match) => match[1]);

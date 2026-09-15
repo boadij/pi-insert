@@ -113,15 +113,20 @@ export default function piInsert(pi: ExtensionAPI) {
             continue;
           }
           if (choice === "Continue") {
-            const message = (args ?? "").trim();
-            const prompt = [
-              ...(await Promise.all(files.map(formatFile))),
-              ...(message ? [message] : []),
-            ].join("\n\n");
+            ctx.ui.setStatus("pi-insert", "Preparing insert…");
+            try {
+              const message = (args ?? "").trim();
+              const prompt = [
+                ...(await Promise.all(files.map(formatFile))),
+                ...(message ? [message] : []),
+              ].join("\n\n");
 
-            ctx.ui.pasteToEditor(prompt);
-            if (ctx.mode === "tui") ctx.ui.pasteToEditor("\n");
-            return;
+              ctx.ui.pasteToEditor(prompt);
+              if (ctx.mode === "tui") ctx.ui.pasteToEditor("\n");
+              return;
+            } finally {
+              ctx.ui.setStatus("pi-insert", undefined);
+            }
           }
 
           const index = rows.indexOf(choice);
