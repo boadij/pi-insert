@@ -53,7 +53,7 @@ async function formatFile(file: InsertFile): Promise<string> {
 
 export default function piInsert(pi: ExtensionAPI) {
   pi.registerCommand("insert", {
-    description: "Paste text into temporary files and insert or reference them in a message",
+    description: "Paste text into temporary files and prepare them in the input editor",
     handler: async (args, ctx) => {
       const files: InsertFile[] = [];
       let dir: string | undefined;
@@ -62,30 +62,25 @@ export default function piInsert(pi: ExtensionAPI) {
       const addFile = async (emptyMessage: string) => {
         const number = nextNumber;
         const fallbackName = `text-${number}.txt`;
-        let text = "";
+        const label = await ctx.ui.input(`Pi insert - label for ${fallbackName} (optional)`, "Press Enter to skip");
+        if (label === undefined) return false;
 
-        while (true) {
-          const edited = await ctx.ui.editor(`Pi insert - ${fallbackName}`, text);
-          if (edited === undefined) return false;
-          if (edited.length === 0) {
-            ctx.ui.notify(emptyMessage, "warning");
-            return false;
-          }
-          text = edited;
-
-          const label = await ctx.ui.input(`Pi insert - label for ${fallbackName} (optional)`, "Press Enter to skip");
-          if (label === undefined) continue;
-
-          const cleanLabel = label.trim() || undefined;
-          const name = filenameFor(cleanLabel, number, files);
-          dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
-          const path = join(dir, name);
-          const bytes = Buffer.byteLength(text, "utf8");
-          await writeFile(path, text, "utf8");
-          files.push({ number, name, path, bytes, embed: bytes <= EMBED_LIMIT, label: cleanLabel });
-          nextNumber++;
-          return true;
+        const cleanLabel = label.trim() || undefined;
+        const name = filenameFor(cleanLabel, number, files);
+        const text = await ctx.ui.editor(`Pi insert - ${name}`, "");
+        if (text === undefined) return false;
+        if (text.length === 0) {
+          ctx.ui.notify(emptyMessage, "warning");
+          return false;
         }
+
+        dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
+        const path = join(dir, name);
+        const bytes = Buffer.byteLength(text, "utf8");
+        await writeFile(path, text, "utf8");
+        files.push({ number, name, path, bytes, embed: bytes <= EMBED_LIMIT, label: cleanLabel });
+        nextNumber++;
+        return true;
       };
 
       try {
@@ -112,11 +107,13 @@ export default function piInsert(pi: ExtensionAPI) {
             continue;
           }
           if (choice === "Continue") {
-            const message = await ctx.ui.editor("Pi insert - message (optional)", (args ?? "").trim());
-            if (message === undefined) continue;
+            const message = (args ?? "").trim();
+            const prompt = [
+              ...(await Promise.all(files.map(formatFile))),
+              ...(message ? [message] : []),
+            ].join("\n\n");
 
-            const inserted = await Promise.all(files.map(formatFile));
-            pi.sendUserMessage([...inserted, ...(message.trim() ? [message] : [])].join("\n\n"));
+            ctx.ui.pasteToEditor(prompt);
             return;
           }
 

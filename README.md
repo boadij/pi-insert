@@ -8,7 +8,7 @@ Pi insert adds one command:
 /insert
 ```
 
-Paste one or more text blocks. After each paste, Pi insert asks for an optional short label; press Enter to skip it. Labels become readable temporary filenames; unlabeled blocks keep the `text-N.txt` fallback. Each block is shown in a compact native summary.
+Paste one or more text blocks. For each text block, Pi insert first asks for an optional short label. Press Enter to use the `text-N.txt` fallback. The resulting filename is then shown in the content editor before you paste the text. Each block is shown in a compact native summary.
 
 ```text
 Pi insert - 3 text files
@@ -37,7 +37,7 @@ Selecting the mode toggles between **Embed** and **Reference**. Files up to 64 K
 
 Editing a label renames its temporary file too. Duplicate labels get `-2`, `-3`, and so on. Removing a file deletes that temporary file. Remove is only offered when another file would remain.
 
-Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns to the summary. Esc from the label prompt immediately after a paste returns to that text editor with the pasted text preserved. Esc from the final optional message editor returns to the summary.
+Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns to the summary. Press Esc while adding a file to cancel that addition. If no files have been added yet, `/insert` exits; otherwise you return to the summary.
 
 ## Example
 
@@ -57,13 +57,16 @@ A referenced file stays compact:
 
 `bytes` is the raw UTF-8 byte count. When present, `label` preserves the exact human label even when the generated filename is normalized, truncated, or deduplicated.
 
-After the summary, Pi insert opens one optional message editor for instructions such as:
+Selecting `Continue` prepares the files in Pi's normal input editor instead of submitting them immediately. Large prepared content uses Pi's native collapsed paste display, so it may appear as a compact `[paste #…]` marker.
+
+Add or edit your instructions in the normal Pi editor, then press Enter when you are ready to send. Text supplied after `/insert` is appended to the prepared file payload.
+
+For example:
 
 ```text
 Compare these logs and explain why the second run fails.
 ```
 
-Everything is sent as one user message.
 
 ## Install
 
