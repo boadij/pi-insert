@@ -37,7 +37,10 @@ Selecting the mode toggles between **Embed** and **Reference**. Files up to 64 K
 
 Editing a label renames its temporary file too. Duplicate labels get `-2`, `-3`, and so on. Removing a file deletes that temporary file. Remove is only offered when another file would remain.
 
-Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns to the summary. Press Esc while adding a file to cancel that addition. If no files have been added yet, `/insert` exits; otherwise you return to the summary.
+Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns to the summary. If no files have been added yet, `/insert` exits; otherwise you return to the summary.
+
+- Esc from content returns to the label step.
+- Esc from the label step cancels adding that file.
 
 ## Example
 
@@ -58,6 +61,8 @@ A referenced file stays compact:
 `bytes` is the raw UTF-8 byte count. When present, `label` preserves the exact human label even when the generated filename is normalized, truncated, or deduplicated.
 
 Selecting `Continue` prepares the files in Pi's normal input editor instead of submitting them immediately. Large prepared content uses Pi's native collapsed paste display, so it may appear as a compact `[paste #…]` marker.
+
+- Continue prepares the content in Pi's editor with the cursor ready on the following line for additional instructions.
 
 Add or edit your instructions in the normal Pi editor, then press Enter when you are ready to send. Text supplied after `/insert` is appended to the prepared file payload.
 

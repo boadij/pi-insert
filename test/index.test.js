@@ -9,12 +9,13 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
   const pastes = [];
   const editors = [
     "héllo",
+    undefined,
     "second file",
     "x".repeat(64 * 1024),
     "y".repeat(64 * 1024 + 1),
     "remove me",
   ];
-  const inputs = ["", "failed build", "", "large log", "large log"];
+  const inputs = ["", "faield build", "failed build", "", "large log", "large log"];
   const steps = [
     () => "Add more",
     (options) => options.find((option) => option.startsWith("2. failed-build.txt")),
@@ -33,6 +34,7 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
   ];
   const menus = [];
   const contentTitles = [];
+  const labelPrompts = [];
 
   piInsert({
     registerCommand(_name, definition) {
@@ -53,7 +55,10 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
         contentTitles.push(title);
         return editors.shift();
       },
-      input: async () => inputs.shift(),
+      input: async (title, placeholder) => {
+        labelPrompts.push({ title, placeholder });
+        return inputs.shift();
+      },
       select: async (_title, options) => {
         menus.push(options);
         return steps.shift()(options);
@@ -63,9 +68,10 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
       },
       notify() {},
     },
+    mode: "tui",
   });
 
-  assert.equal(pastes.length, 1);
+  assert.equal(pastes.length, 2);
   const prepared = pastes[0];
   const tags = [...prepared.matchAll(/<file name="([^"]+\.txt)" bytes="(\d+)"(?: label="([^"]*)")?(?: \/>|>)/g)];
   const paths = tags.map((match) => match[1]);
@@ -73,11 +79,21 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
   try {
     assert.deepEqual(contentTitles, [
       "Pi insert - text-1.txt",
+      "Pi insert - faield-build.txt",
       "Pi insert - failed-build.txt",
       "Pi insert - text-3.txt",
       "Pi insert - large-log.txt",
       "Pi insert - large-log-2.txt",
     ]);
+    assert.deepEqual(labelPrompts, [
+      { title: "Pi insert - label (optional)", placeholder: "Press Enter for text-1.txt" },
+      { title: "Pi insert - label (optional)", placeholder: "Press Enter for text-2.txt" },
+      { title: "Pi insert - label (optional)", placeholder: "Press Enter for text-2.txt" },
+      { title: "Pi insert - label (optional)", placeholder: "Press Enter for text-3.txt" },
+      { title: "Pi insert - label (optional)", placeholder: "Press Enter for text-4.txt" },
+      { title: "Pi insert - label (optional)", placeholder: "Press Enter for text-5.txt" },
+    ]);
+    assert.equal(pastes[1], "\n");
     assert.deepEqual(paths.map((path) => basename(path)), ["text-1.txt", "updated-build-auth.txt", "text-3.txt", "large-log.txt"]);
     assert.deepEqual(tags.map((match) => Number(match[2])), [6, 11, 64 * 1024, 64 * 1024 + 1]);
     assert.deepEqual(tags.map((match) => match[3]), [

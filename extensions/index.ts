@@ -62,25 +62,31 @@ export default function piInsert(pi: ExtensionAPI) {
       const addFile = async (emptyMessage: string) => {
         const number = nextNumber;
         const fallbackName = `text-${number}.txt`;
-        const label = await ctx.ui.input(`Pi insert - label for ${fallbackName} (optional)`, "Press Enter to skip");
-        if (label === undefined) return false;
+        while (true) {
+          const label = await ctx.ui.input(
+            "Pi insert - label (optional)",
+            `Press Enter for ${fallbackName}`,
+          );
+          if (label === undefined) return false;
 
-        const cleanLabel = label.trim() || undefined;
-        const name = filenameFor(cleanLabel, number, files);
-        const text = await ctx.ui.editor(`Pi insert - ${name}`, "");
-        if (text === undefined) return false;
-        if (text.length === 0) {
-          ctx.ui.notify(emptyMessage, "warning");
-          return false;
+          const cleanLabel = label.trim() || undefined;
+          const name = filenameFor(cleanLabel, number, files);
+          const text = await ctx.ui.editor(`Pi insert - ${name}`, "");
+          if (text === undefined) continue;
+
+          if (text.length === 0) {
+            ctx.ui.notify(emptyMessage, "warning");
+            return false;
+          }
+
+          dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
+          const path = join(dir, name);
+          const bytes = Buffer.byteLength(text, "utf8");
+          await writeFile(path, text, "utf8");
+          files.push({ number, name, path, bytes, embed: bytes <= EMBED_LIMIT, label: cleanLabel });
+          nextNumber++;
+          return true;
         }
-
-        dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
-        const path = join(dir, name);
-        const bytes = Buffer.byteLength(text, "utf8");
-        await writeFile(path, text, "utf8");
-        files.push({ number, name, path, bytes, embed: bytes <= EMBED_LIMIT, label: cleanLabel });
-        nextNumber++;
-        return true;
       };
 
       try {
@@ -114,6 +120,7 @@ export default function piInsert(pi: ExtensionAPI) {
             ].join("\n\n");
 
             ctx.ui.pasteToEditor(prompt);
+            if (ctx.mode === "tui") ctx.ui.pasteToEditor("\n");
             return;
           }
 
