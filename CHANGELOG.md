@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/boadij/pi-insert/compare/v0.2.0...v0.3.0) (2026-09-16)
+
+
+### Features
+
+* prepare inserts in editor ([#9](https://github.com/boadij/pi-insert/issues/9)) ([f28a382](https://github.com/boadij/pi-insert/commit/f28a382a3b4f2dd5bb5e9d0896f1c6b1a6ef88d2))
+* use markdown file extension for temporary inserted files ([472c440](https://github.com/boadij/pi-insert/commit/472c440a2d779992343ccafb972d3b005a05730f))
+
+
+### Bug Fixes
+
+* improve insert label navigation ([#11](https://github.com/boadij/pi-insert/issues/11)) ([dbafbe1](https://github.com/boadij/pi-insert/commit/dbafbe19d1a5c4ad30b51f386fc05e4c2d70544f))
+* show insert preparation status ([#12](https://github.com/boadij/pi-insert/issues/12)) ([c221160](https://github.com/boadij/pi-insert/commit/c221160eded49634023529453b6ddaf8e101bf07))
+
 ## [0.2.0](https://github.com/boadij/pi-insert/compare/v0.1.2...v0.2.0) (2026-09-09)
 
 
