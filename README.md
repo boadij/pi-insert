@@ -8,22 +8,22 @@ Pi insert adds one command:
 /insert
 ```
 
-Paste one or more text blocks. For each text block, Pi insert first asks for an optional short label. Press Enter to use the `text-N.txt` fallback. The resulting filename is then shown in the content editor before you paste the text. Each block is shown in a compact native summary.
+Paste one or more text blocks. For each text block, Pi insert first asks for an optional short label. Press Enter to use the `text-N.md` fallback. The resulting filename is then shown in the content editor before you paste the text. Each block is shown in a compact native summary.
 
 ```text
 Pi insert - 3 text files
 
 Add more
 Continue
-1. successful-build.txt   8.3 KiB  Embed      "successful build"
-2. failed-build.txt       21.4 KiB  Reference  "failed build"
-3. text-3.txt             72.4 KiB  Reference  recommended
+1. successful-build.md   8.3 KiB  Embed      "successful build"
+2. failed-build.md       21.4 KiB  Reference  "failed build"
+3. text-3.md             72.4 KiB  Reference  recommended
 ```
 
 `Add more` is the first selection. Select a file row to open its controls:
 
 ```text
-failed-build.txt
+failed-build.md
 
 Mode: Reference
 Edit label
@@ -47,7 +47,7 @@ Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns 
 An embedded file follows Pi's native file framing, with `bytes` added as explicit metadata:
 
 ```xml
-<file name="/tmp/pi-insert-AbCd12/successful-build.txt" bytes="8529" label="successful build">
+<file name="/tmp/pi-insert-AbCd12/successful-build.md" bytes="8529" label="successful build">
 ...your pasted text...
 </file>
 ```
@@ -55,7 +55,7 @@ An embedded file follows Pi's native file framing, with `bytes` added as explici
 A referenced file stays compact:
 
 ```xml
-<file name="/tmp/pi-insert-AbCd12/failed-build.txt" bytes="74231" label="failed build" />
+<file name="/tmp/pi-insert-AbCd12/failed-build.md" bytes="74231" label="failed build" />
 ```
 
 `bytes` is the raw UTF-8 byte count. When present, `label` preserves the exact human label even when the generated filename is normalized, truncated, or deduplicated.
@@ -71,7 +71,6 @@ For example:
 ```text
 Compare these logs and explain why the second run fails.
 ```
-
 
 ## Install
 

@@ -14,9 +14,20 @@ type InsertFile = {
   label?: string;
 };
 
-function filenameFor(label: string | undefined, number: number, files: InsertFile[], current?: InsertFile): string {
+function filenameFor(
+  label: string | undefined,
+  number: number,
+  files: InsertFile[],
+  current?: InsertFile,
+): string {
   const stem = label
-    ? [...label.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "")]
+    ? [
+        ...label
+          .normalize("NFKC")
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}]+/gu, "-")
+          .replace(/^-+|-+$/g, ""),
+      ]
         .slice(0, 48)
         .join("")
         .replace(/-+$/, "")
@@ -24,8 +35,9 @@ function filenameFor(label: string | undefined, number: number, files: InsertFil
   const base = stem || `text-${number}`;
 
   for (let suffix = 1; ; suffix++) {
-    const name = `${base}${suffix === 1 ? "" : `-${suffix}`}.txt`;
-    if (!files.some((file) => file !== current && file.name === name)) return name;
+    const name = `${base}${suffix === 1 ? "" : `-${suffix}`}.md`;
+    if (!files.some((file) => file !== current && file.name === name))
+      return name;
   }
 }
 
@@ -53,7 +65,8 @@ async function formatFile(file: InsertFile): Promise<string> {
 
 export default function piInsert(pi: ExtensionAPI) {
   pi.registerCommand("insert", {
-    description: "Paste text into temporary files and prepare them in the input editor",
+    description:
+      "Paste text into temporary files and prepare them in the input editor",
     handler: async (args, ctx) => {
       const files: InsertFile[] = [];
       let dir: string | undefined;
@@ -61,7 +74,7 @@ export default function piInsert(pi: ExtensionAPI) {
 
       const addFile = async (emptyMessage: string) => {
         const number = nextNumber;
-        const fallbackName = `text-${number}.txt`;
+        const fallbackName = `text-${number}.md`;
         while (true) {
           const label = await ctx.ui.input(
             "Pi insert - label (optional)",
@@ -83,7 +96,14 @@ export default function piInsert(pi: ExtensionAPI) {
           const path = join(dir, name);
           const bytes = Buffer.byteLength(text, "utf8");
           await writeFile(path, text, "utf8");
-          files.push({ number, name, path, bytes, embed: bytes <= EMBED_LIMIT, label: cleanLabel });
+          files.push({
+            number,
+            name,
+            path,
+            bytes,
+            embed: bytes <= EMBED_LIMIT,
+            label: cleanLabel,
+          });
           nextNumber++;
           return true;
         }
@@ -98,7 +118,8 @@ export default function piInsert(pi: ExtensionAPI) {
           const sizeWidth = Math.max(...sizes.map((size) => size.length));
           const rows = files.map((file, index) => {
             const mode = file.embed ? "Embed" : "Reference";
-            const recommended = file.bytes > EMBED_LIMIT && !file.embed ? "  recommended" : "";
+            const recommended =
+              file.bytes > EMBED_LIMIT && !file.embed ? "  recommended" : "";
             const label = file.label ? `  ${JSON.stringify(file.label)}` : "";
             return `${index + 1}. ${file.name.padEnd(nameWidth)}  ${sizes[index].padStart(sizeWidth)}  ${mode.padEnd(9)}${recommended}${label}`;
           });
@@ -135,7 +156,11 @@ export default function piInsert(pi: ExtensionAPI) {
 
           while (files.includes(file)) {
             const mode = `Mode: ${file.embed ? "Embed" : "Reference"}${file.bytes > EMBED_LIMIT && !file.embed ? " (recommended)" : ""}`;
-            const actions = [mode, "Edit label", ...(files.length > 1 ? ["Remove"] : [])];
+            const actions = [
+              mode,
+              "Edit label",
+              ...(files.length > 1 ? ["Remove"] : []),
+            ];
             const action = await ctx.ui.select(file.name, actions);
 
             if (action === undefined) break;
@@ -144,7 +169,10 @@ export default function piInsert(pi: ExtensionAPI) {
               continue;
             }
             if (action === "Edit label") {
-              const label = await ctx.ui.editor(`Pi insert - label for ${file.name} (optional)`, file.label ?? "");
+              const label = await ctx.ui.editor(
+                `Pi insert - label for ${file.name} (optional)`,
+                file.label ?? "",
+              );
               if (label !== undefined) {
                 const cleanLabel = label.trim() || undefined;
                 const name = filenameFor(cleanLabel, file.number, files, file);
@@ -165,7 +193,10 @@ export default function piInsert(pi: ExtensionAPI) {
           }
         }
       } catch (error) {
-        ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+        ctx.ui.notify(
+          error instanceof Error ? error.message : String(error),
+          "error",
+        );
       }
     },
   });
