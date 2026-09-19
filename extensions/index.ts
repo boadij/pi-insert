@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const EMBED_LIMIT = 64 * 1024;
+const AUTO_LABEL_LIMIT = 80;
 
 type InsertFile = {
   number: number;
@@ -41,6 +42,79 @@ function filenameFor(
   }
 }
 
+function labelFor(text: string): string | undefined {
+  const lines = text.split(/\r\n?|\n/);
+  let fallback: string | undefined;
+  let fence: { marker: "`" | "~"; length: number } | undefined;
+  let label: string | undefined;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (
+      !fallback &&
+      trimmed &&
+      !/^(`{3,}|~{3,})/.test(trimmed)
+    ) {
+      fallback = trimmed;
+    }
+
+    if (fence) {
+      const closing = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+      if (
+        closing &&
+        closing[1][0] === fence.marker &&
+        closing[1].length >= fence.length
+      ) {
+        fence = undefined;
+      }
+
+      continue;
+    }
+
+    const opening = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+
+    if (
+      opening &&
+      (opening[1][0] === "~" || !opening[2].includes("`"))
+    ) {
+      fence = {
+        marker: opening[1][0] as "`" | "~",
+        length: opening[1].length,
+      };
+      continue;
+    }
+
+    const heading = line.match(
+      /^ {0,3}#{1,6}(?:[ \t]+|$)(.*)$/,
+    );
+
+    if (!heading) continue;
+
+    const candidate = heading[1]
+      .replace(/[ \t]+#+[ \t]*$/, "")
+      .trim();
+
+    if (candidate) {
+      label = candidate;
+      break;
+    }
+  }
+
+  label ??= fallback;
+  if (!label) return;
+
+  const chars = [...label];
+
+  return chars.length > AUTO_LABEL_LIMIT
+    ? `${chars
+        .slice(0, AUTO_LABEL_LIMIT - 1)
+        .join("")
+        .trimEnd()}…`
+    : label;
+}
+
 function xmlAttr(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -75,38 +149,32 @@ export default function piInsert(pi: ExtensionAPI) {
       const addFile = async (emptyMessage: string) => {
         const number = nextNumber;
         const fallbackName = `text-${number}.md`;
-        while (true) {
-          const label = await ctx.ui.input(
-            "Pi insert - label (optional)",
-            `Press Enter for ${fallbackName}`,
-          );
-          if (label === undefined) return false;
+        const text = await ctx.ui.editor(`Pi insert - ${fallbackName}`, "");
 
-          const cleanLabel = label.trim() || undefined;
-          const name = filenameFor(cleanLabel, number, files);
-          const text = await ctx.ui.editor(`Pi insert - ${name}`, "");
-          if (text === undefined) continue;
+        if (text === undefined) return false;
 
-          if (text.length === 0) {
-            ctx.ui.notify(emptyMessage, "warning");
-            return false;
-          }
-
-          dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
-          const path = join(dir, name);
-          const bytes = Buffer.byteLength(text, "utf8");
-          await writeFile(path, text, "utf8");
-          files.push({
-            number,
-            name,
-            path,
-            bytes,
-            embed: bytes <= EMBED_LIMIT,
-            label: cleanLabel,
-          });
-          nextNumber++;
-          return true;
+        if (text.length === 0) {
+          ctx.ui.notify(emptyMessage, "warning");
+          return false;
         }
+
+        const label = labelFor(text);
+        const name = filenameFor(label, number, files);
+
+        dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
+        const path = join(dir, name);
+        const bytes = Buffer.byteLength(text, "utf8");
+        await writeFile(path, text, "utf8");
+        files.push({
+          number,
+          name,
+          path,
+          bytes,
+          embed: bytes <= EMBED_LIMIT,
+          label,
+        });
+        nextNumber++;
+        return true;
       };
 
       try {

@@ -8,7 +8,11 @@ Pi insert adds one command:
 /insert
 ```
 
-Paste one or more text blocks. For each text block, Pi insert first asks for an optional short label. Press Enter to use the `text-N.md` fallback. The resulting filename is then shown in the content editor before you paste the text. Each block is shown in a compact native summary.
+Paste one or more text blocks. For each text block, `/insert` opens the content editor immediately. Pi insert derives a short label from the first Markdown ATX heading (# through ######) when present, otherwise from the first non-empty line, and uses that label for the temporary filename. Each block is shown in a compact native summary.
+
+```text
+/insert → content → summary
+```
 
 ```text
 Pi insert - 3 text files
@@ -35,12 +39,9 @@ Selecting the mode toggles between **Embed** and **Reference**. Files up to 64 K
 - **Embed** uses Pi-style `<file>` framing with the path, raw byte count, optional exact label, and full contents.
 - **Reference** uses the same framing as a self-closing tag, so the agent gets the path, byte count, and optional exact label without the contents and can decide whether to `read`, `grep`, diff, or parse the temporary file.
 
-Editing a label renames its temporary file too. Duplicate labels get `-2`, `-3`, and so on. Removing a file deletes that temporary file. Remove is only offered when another file would remain.
+To correct a label, select a file in the summary and choose `Edit label`. Editing a label renames its temporary file too. Duplicate labels get `-2`, `-3`, and so on. Removing a file deletes that temporary file. Remove is only offered when another file would remain.
 
 Press Esc from the summary to cancel `/insert`. Esc from a file submenu returns to the summary. If no files have been added yet, `/insert` exits; otherwise you return to the summary.
-
-- Esc from content returns to the label step.
-- Esc from the label step cancels adding that file.
 
 ## Example
 
