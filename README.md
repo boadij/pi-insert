@@ -8,7 +8,7 @@ Pi insert adds one command:
 /insert
 ```
 
-Paste one or more text blocks. For each text block, `/insert` opens the content editor immediately. Pi insert derives a short label from the first Markdown heading when present, otherwise from the first non-empty line, and uses that label for the temporary filename. Each block is shown in a compact native summary.
+Paste one or more text blocks. For each text block, `/insert` opens the content editor immediately. Pi insert derives a short label from the first Markdown ATX heading (# through ######) when present, otherwise from the first non-empty line, and uses that label for the temporary filename. Each block is shown in a compact native summary.
 
 ```text
 /insert → content → summary
