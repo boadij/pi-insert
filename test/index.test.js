@@ -7,45 +7,60 @@ import piInsert from "../extensions/index.ts";
 test("/insert sends Pi-style file framing with byte counts and labels", async () => {
   let command;
   const pastes = [];
-  const editors = [
-    "héllo",
-    undefined,
-    "second file",
-    "x".repeat(64 * 1024),
-    "y".repeat(64 * 1024 + 1),
+  const exactPrefix = "##### Large log\n";
+  const exact =
+    exactPrefix +
+    "x".repeat(64 * 1024 - Buffer.byteLength(exactPrefix));
+  const overPrefix = "intro\n\n### Large log ###\n";
+  const over =
+    overPrefix +
+    "y".repeat(
+      64 * 1024 +
+        1 -
+        Buffer.byteLength(overPrefix),
+    );
+  const longLabel = "A".repeat(90);
+  const truncated = `# ${longLabel}\nbody`;
+  const editorTexts = [
+    "Failed build\nsecond file",
+    "Introduction before the useful title.\n\n```sh\n# not the title\n```\n\n##### Actual title\nbody that must stay out",
+    exact,
+    over,
+    truncated,
     "remove me",
   ];
-  const inputs = [
-    "",
-    "faield build",
-    "failed build",
-    "",
-    "large log",
-    "large log",
-  ];
+  const editorResults = [editorTexts[0], undefined, ...editorTexts.slice(1)];
+  const labelEditResults = ['Updated "Build" & <auth>', "   "];
+  const labelEditInitials = [];
   const steps = [
-    () => "Add more",
-    (options) =>
-      options.find((option) => option.startsWith("2. failed-build.md")),
-    (options) => options.find((option) => option.startsWith("Mode: Embed")),
+    (options) => options.find((option) => option.startsWith("1. failed-build.md")),
     () => "Edit label",
     () => undefined,
     () => "Add more",
     () => "Add more",
-    (options) => options.find((option) => option.startsWith("4. large-log.md")),
+    (options) => options.find((option) => option.startsWith("2. actual-title.md")),
+    () => "Edit label",
+    (options) => options.find((option) => option === "Mode: Embed"),
+    () => undefined,
+    () => "Add more",
+    () => "Add more",
+    (options) => options.find((option) => option.startsWith("3. large-log.md")),
+    (options) => options.find((option) => option === "Mode: Embed"),
+    () => undefined,
+    (options) =>
+      options.find((option) => option.startsWith("4. large-log-2.md")),
     (options) =>
       options.find((option) => option === "Mode: Reference (recommended)"),
     () => undefined,
     () => "Add more",
-    (options) =>
-      options.find((option) => option.startsWith("5. large-log-2.md")),
+    () => "Add more",
+    (options) => options.find((option) => option.startsWith("6. remove-me.md")),
     () => "Remove",
     () => "Continue",
   ];
   const menus = [];
   const statuses = [];
   const contentTitles = [];
-  const labelPrompts = [];
 
   piInsert({
     registerCommand(_name, definition) {
@@ -59,16 +74,12 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
   await command.handler("Compare them.", {
     ui: {
       editor: async (title, initial) => {
-        if (title === "Pi insert - label for failed-build.md (optional)") {
-          assert.equal(initial, "failed build");
-          return 'Updated "Build" & <auth>';
+        if (title.startsWith("Pi insert - label for ")) {
+          labelEditInitials.push(initial);
+          return labelEditResults.shift();
         }
         contentTitles.push(title);
-        return editors.shift();
-      },
-      input: async (title, placeholder) => {
-        labelPrompts.push({ title, placeholder });
-        return inputs.shift();
+        return editorResults.shift();
       },
       select: async (_title, options) => {
         menus.push(options);
@@ -97,84 +108,85 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
     ),
   ];
   const paths = tags.map((match) => match[1]);
+  const truncatedLabel = `${"A".repeat(79)}…`;
 
   try {
     assert.deepEqual(contentTitles, [
       "Pi insert - text-1.md",
-      "Pi insert - faield-build.md",
-      "Pi insert - failed-build.md",
+      "Pi insert - text-2.md",
+      "Pi insert - text-2.md",
       "Pi insert - text-3.md",
-      "Pi insert - large-log.md",
-      "Pi insert - large-log-2.md",
-    ]);
-    assert.deepEqual(labelPrompts, [
-      {
-        title: "Pi insert - label (optional)",
-        placeholder: "Press Enter for text-1.md",
-      },
-      {
-        title: "Pi insert - label (optional)",
-        placeholder: "Press Enter for text-2.md",
-      },
-      {
-        title: "Pi insert - label (optional)",
-        placeholder: "Press Enter for text-2.md",
-      },
-      {
-        title: "Pi insert - label (optional)",
-        placeholder: "Press Enter for text-3.md",
-      },
-      {
-        title: "Pi insert - label (optional)",
-        placeholder: "Press Enter for text-4.md",
-      },
-      {
-        title: "Pi insert - label (optional)",
-        placeholder: "Press Enter for text-5.md",
-      },
+      "Pi insert - text-4.md",
+      "Pi insert - text-5.md",
+      "Pi insert - text-6.md",
     ]);
     assert.equal(pastes[1], "\n");
     assert.deepEqual(
       paths.map((path) => basename(path)),
-      ["text-1.md", "updated-build-auth.md", "text-3.md", "large-log.md"],
+      [
+        "updated-build-auth.md",
+        "text-2.md",
+        "large-log.md",
+        "large-log-2.md",
+        `${"a".repeat(48)}.md`,
+      ],
     );
     assert.deepEqual(
       tags.map((match) => Number(match[2])),
-      [6, 11, 64 * 1024, 64 * 1024 + 1],
+      [
+        Buffer.byteLength(editorTexts[0]),
+        Buffer.byteLength(editorTexts[1]),
+        64 * 1024,
+        64 * 1024 + 1,
+        Buffer.byteLength(editorTexts[4]),
+      ],
     );
     assert.deepEqual(
       tags.map((match) => match[3]),
       [
-        undefined,
         "Updated &quot;Build&quot; &amp; &lt;auth>",
         undefined,
-        "large log",
+        "Large log",
+        "Large log",
+        truncatedLabel,
       ],
     );
-    assert.equal(await readFile(paths[0], "utf8"), "héllo");
-    assert.equal(await readFile(paths[1], "utf8"), "second file");
+    assert.equal([...tags[4][3]].length, 80);
+    assert.ok(tags[4][3].endsWith("…"));
+    assert.equal(await readFile(paths[0], "utf8"), editorTexts[0]);
+    assert.equal(await readFile(paths[1], "utf8"), editorTexts[1]);
     assert.equal((await readFile(paths[2], "utf8")).length, 64 * 1024);
     assert.equal((await readFile(paths[3], "utf8")).length, 64 * 1024 + 1);
+    assert.equal(await readFile(paths[4], "utf8"), editorTexts[4]);
     await assert.rejects(access(join(dirname(paths[0]), "failed-build.md")));
-    await assert.rejects(access(join(dirname(paths[0]), "large-log-2.md")));
+    await assert.rejects(access(join(dirname(paths[0]), "actual-title.md")));
+    await assert.rejects(access(join(dirname(paths[0]), "remove-me.md")));
+    assert.deepEqual(labelEditInitials, ["Failed build", "Actual title"]);
 
     assert.ok(
-      prepared.includes(`<file name="${paths[0]}" bytes="6">\nhéllo\n</file>`),
-    );
-    assert.ok(
       prepared.includes(
-        `<file name="${paths[1]}" bytes="11" label="Updated &quot;Build&quot; &amp; &lt;auth>" />`,
-      ),
-    );
-    assert.doesNotMatch(prepared, /second file/);
-    assert.ok(
-      prepared.includes(
-        `<file name="${paths[2]}" bytes="${64 * 1024}">\n${"x".repeat(100)}`,
+        `<file name="${paths[0]}" bytes="${Buffer.byteLength(editorTexts[0])}" label="Updated &quot;Build&quot; &amp; &lt;auth>">\n${editorTexts[0]}\n</file>`,
       ),
     );
     assert.ok(
       prepared.includes(
-        `<file name="${paths[3]}" bytes="${64 * 1024 + 1}" label="large log">\n${"y".repeat(100)}`,
+        `<file name="${paths[1]}" bytes="${Buffer.byteLength(editorTexts[1])}" />`,
+      ),
+    );
+    assert.doesNotMatch(prepared, /body that must stay out/);
+    assert.ok(
+      prepared.includes(
+        `<file name="${paths[2]}" bytes="${64 * 1024}" label="Large log" />`,
+      ),
+    );
+    assert.ok(
+      prepared.includes(
+        `<file name="${paths[3]}" bytes="${64 * 1024 + 1}" label="Large log">\n${over.slice(0, 100)}`,
+      ),
+    );
+    assert.ok(
+      prepared.includes(
+        `<file name="${paths[4]}" bytes="${Buffer.byteLength(editorTexts[4])}" label="${truncatedLabel}">\n${editorTexts[4]}\n</file>`,
       ),
     );
     assert.doesNotMatch(
