@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/boadij/pi-insert/compare/v0.3.0...v0.4.0) (2026-09-19)
+
+
+### Features
+
+* auto-detect insert labels ([#13](https://github.com/boadij/pi-insert/issues/13)) ([0d5b2c2](https://github.com/boadij/pi-insert/commit/0d5b2c217edb43314a758c5dc044e0b09b456ba1))
+
 ## [0.3.0](https://github.com/boadij/pi-insert/compare/v0.2.0...v0.3.0) (2026-09-16)
 
 
