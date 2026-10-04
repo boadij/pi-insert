@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   release:
@@ -36,4 +35,4 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - run: npm test
-      - run: npm publish --access public
+      - run: npm publish
