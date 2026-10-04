@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/boadij/pi-insert/compare/v0.4.0...v0.4.1) (2026-10-04)
+
+
+### Continuous Integration
+
+* simplify npm publishing ([#15](https://github.com/boadij/pi-insert/issues/15)) ([6963b21](https://github.com/boadij/pi-insert/commit/6963b21c4dd2122c83bd11f10daada355222f540))
+
 ## [0.4.0](https://github.com/boadij/pi-insert/compare/v0.3.0...v0.4.0) (2026-09-19)
 
 
