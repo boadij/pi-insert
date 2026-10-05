@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/boadij/pi-insert/compare/v0.4.1...v0.4.2) (2026-10-05)
+
+
+### Continuous Integration
+
+* run checks on push ([#17](https://github.com/boadij/pi-insert/issues/17)) ([d0f464f](https://github.com/boadij/pi-insert/commit/d0f464f877ca2a852ac219efdb2873a3dd56b242))
+
 ## [0.4.1](https://github.com/boadij/pi-insert/compare/v0.4.0...v0.4.1) (2026-10-04)
 
 
