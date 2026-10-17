@@ -161,7 +161,9 @@ export default function piInsert(pi: ExtensionAPI) {
         const label = labelFor(text);
         const name = filenameFor(label, number, files);
 
-        dir ??= await mkdtemp(join(tmpdir(), "pi-insert-"));
+        dir ??= await mkdtemp(
+          join(process.platform === "darwin" ? "/tmp" : tmpdir(), "pi-insert-"),
+        );
         const path = join(dir, name);
         const bytes = Buffer.byteLength(text, "utf8");
         await writeFile(path, text, "utf8");

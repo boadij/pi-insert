@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import piInsert from "../extensions/index.ts";
 
@@ -111,6 +112,10 @@ test("/insert sends Pi-style file framing with byte counts and labels", async ()
   const truncatedLabel = `${"A".repeat(79)}…`;
 
   try {
+    assert.equal(
+      dirname(dirname(paths[0])),
+      process.platform === "darwin" ? "/tmp" : tmpdir(),
+    );
     assert.deepEqual(contentTitles, [
       "Pi insert - text-1.md",
       "Pi insert - text-2.md",
